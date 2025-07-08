@@ -3,18 +3,29 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - dev
-  workflow_dispatch:
+      - dev # 当推送到 dev 分支时触发
+  workflow_dispatch: # 允许手动从 GitHub Actions 页面触发
+
+# ✨ 核心更改 1: 增加 permissions 配置 ✨
+permissions:
+  contents: read # 允许读取仓库内容
+  pages: write   # 允许写入 GitHub Pages (部署)
+  id-token: write # 用于 OIDC 身份验证，pages action 需要
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # 使用最新的 Ubuntu 运行环境
+
+    # ✨ 核心更改 2: 设置部署环境 ✨
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20.x tommy
+      - name: Use Node.js 20.x
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
@@ -26,14 +37,24 @@ jobs:
       - name: Build excalidraw-app
         run: yarn --cwd excalidraw-app build
 
-      - name: 查看构建产物
+      # --- 调试步骤 (可选，但推荐保留) ---
+      - name: Check excalidraw-app directory content
         run: ls -al ./excalidraw-app/
 
-      - name: 查看构建产物 build
+      - name: Check excalidraw-app/build directory content
         run: ls -al ./excalidraw-app/build/
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Recursively list excalidraw-app/build directory content
+        run: ls -alR ./excalidraw-app/build/
+      # --- 调试步骤结束 ---
+
+      # ✨ 核心更改 3: 上传 Pages Artifact ✨
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3 # 官方上传 Pages 构建产物的 Action
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./excalidraw-app/build
+          path: ./excalidraw-app/build # 指向你的构建产物目录
+
+      # ✨ 核心更改 4: 部署 Pages Artifact ✨
+      - name: Deploy to GitHub Pages
+        id: deployment # 为这个步骤设置一个 ID，以便获取输出
+        uses: actions/deploy-pages@v4 # 官方部署 Pages 的 Action
