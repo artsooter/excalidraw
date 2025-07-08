@@ -30,6 +30,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./excalidraw-app/dist
-          # 如果你用的是自定义域名，可以加上下面一行
-          # cname: your.custom.domain
+          publish_dir: ./excalidraw-app/build
+          # t
