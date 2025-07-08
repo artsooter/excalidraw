@@ -29,6 +29,9 @@ jobs:
       - name: 查看构建产物
         run: ls -al ./excalidraw-app/
 
+      - name: 查看构建产物 build
+        run: ls -al ./excalidraw-app/build/
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
