@@ -26,9 +26,11 @@ jobs:
       - name: Build excalidraw-app
         run: yarn --cwd excalidraw-app build
 
+      - name: 查看构建产物
+        run: ls -al ./excalidraw-app/
+        
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./excalidraw-app/build
-          # t
