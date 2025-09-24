@@ -27,7 +27,7 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
   const [fileList, setFileList] = useState<FileListItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 获取文件列表
+  // 获取画板列表
   const loadFileList = async () => {
     try {
       const files = await MulitpleDBFileManager.listXMindFiles();
@@ -37,7 +37,7 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
     }
   };
 
-  // 打开弹窗时加载文件列表
+  // 打开弹窗时加载画板列表
   useEffect(() => {
     if (open) {
       loadFileList();
@@ -49,7 +49,7 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
     console.log(fileName)
   };
 
-  // 保存当前文件
+  // 保存当前画板
   const saveCurrentFile = async (name: string) => {
     setSaving(true);
     setError("");
@@ -78,7 +78,7 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
     }
   };
 
-  // 打开文件
+  // 打开画板
   const handleOpenFile = async (fileName: string) => {
     setLoading(true);
     setError("");
@@ -88,11 +88,11 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
 
       const fileData = await MulitpleDBFileManager.loadXMindFile(fileName);
       if (!fileData) {
-        setError("文件不存在");
+        setError("画板不存在");
         return;
       }
 
-      // 创建Blob对象来模拟文件
+      // 创建Blob对象来模拟画板
       const jsonString = JSON.stringify({
         type: "excalidraw",
         version: 2,
@@ -105,7 +105,7 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
       const blob = new Blob([jsonString], { type: "application/json" });
       const file = new File([blob], `${fileName}.excalidraw`, { type: "application/json" });
 
-      // 使用loadFromBlob加载文件
+      // 使用loadFromBlob加载画板
       const sceneData = await loadFromBlob(file, null, null);
 
       // 更新场景
@@ -115,28 +115,28 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
           appState: sceneData.appState,
           captureUpdate: "IMMEDIATELY" as any,
         });
-        // 添加文件
+        // 添加画板
         if (sceneData.files && Object.keys(sceneData.files).length > 0) {
           const fileDataArray = Object.values(sceneData.files);
           excalidrawAPI.addFiles(fileDataArray);
         }
-        // 保存文件名到 localStorage
+        // 保存画板名到 localStorage
         localStorage.setItem("excalidraw-name", fileName);
       }
 
       setOpen(false);
     } catch (e) {
-      setError("打开文件失败");
+      setError("打开画板失败");
       console.error("Failed to open file:", e);
     } finally {
       setLoading(false);
     }
   };
 
-  // 创建新文件
+  // 创建新画板
   const handleCreateNewFile = async () => {
     if (!inputValue.trim()) {
-      setError("请输入文件名");
+      setError("请输入画板名");
       return;
     }
 
@@ -146,33 +146,33 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
       // 先保存当前localStorage内容到indexDB
       await saveCurrentLocalToDB();
 
-      // 先保存当前文件
+      // 先保存当前画板
       const saved = await saveCurrentFile(inputValue);
       if (!saved) {
         return;
       }
 
-      // 清空画布创建新文件
+      // 清空画布创建新画板
       if (excalidrawAPI) {
         excalidrawAPI.resetScene();
       }
 
 
       setFileName(inputValue);
-      localStorage.setItem("excalidraw-name", inputValue);      // 保存文件名到 localStorage
+      localStorage.setItem("excalidraw-name", inputValue);      // 保存画板名到 localStorage
       setShowNameInput(false);
       setOpen(false);
       setInputValue("");
 
     } catch (e) {
-      setError("创建新文件失败");
+      setError("创建新画板失败");
     } finally {
       setSaving(false);
     }
   };
 
 
-  // 当前文件名
+  // 当前画板名
   const currentFileName = typeof window !== "undefined" ? localStorage.getItem("excalidraw-name") : undefined;
 
   return (
@@ -182,27 +182,27 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
         type="button"
         onSelect={handleClick}
         style={{ position: "relative", width: "auto" }}
-        title="保存并打开新文件"
+        title="画板管理"
       >
-        保存并打开新文件
+        画板管理
       </Button>
 
-      {/*文件管理 选择文件页面*/}
+      {/*画板管理 选择画板页面*/}
       {open && !showNameInput && (
         <Dialog
-          title="xmind 文件管理"
+          title="画板管理"
           size="wide"
           onCloseRequest={() => setOpen(false)}
         >
           <div style={{ minHeight: "300px", display: "flex", flexDirection: "column" }}>
             {fileList.length === 0 ? (
               <div style={{ textAlign: "center", padding: "40px 0", color: "#666" }}>
-                暂无保存的文件
+                暂无保存的画板
               </div>
             ) : (
               <div style={{ flex: 1, marginBottom: "16px" }}>
                 <div style={{ marginBottom: "8px", fontWeight: "bold" }}>
-                  已保存的文件：
+                  已保存的画板：
                 </div>
                 <div style={{
                   maxHeight: "200px",
@@ -262,7 +262,7 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
                 disabled={loading}
                 style={{ width: "100%" }}
               >
-                创建新文件
+                创建新画板
               </Button>
             </div>
 
@@ -274,18 +274,18 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
 
       {showNameInput && (
         <Dialog
-          title="创建新文件"
+          title="创建新画板"
           size="small"
           onCloseRequest={() => setShowNameInput(false)}
         >
           <div>
             <div style={{ marginBottom: "8px" }}>
-              请输入新文件名：
+              请输入新画板名：
             </div>
             <input
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
-              placeholder="请输入文件名"
+              placeholder="请输入画板名"
               style={{ width: "100%", marginBottom: "8px", padding: "8px", border: "1px solid #ddd", borderRadius: "4px" }}
             />
             <div style={{ display: "flex", gap: "8px" }}>
