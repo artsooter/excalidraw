@@ -276,6 +276,12 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
 
       // 刷新画板列表
       await loadFileList();
+
+      // 检查是否还有画板，如果没有则关闭弹窗
+      const updatedFiles = await MulitpleDBFileManager.listXMindFiles();
+      if (updatedFiles.length === 0) {
+        setOpen(false);
+      }
     } catch (e: any) {
       setError(e.message || "删除失败");
     } finally {
@@ -301,7 +307,36 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
       {/*画板管理 选择画板页面*/}
       {open && !showNameInput && (
         <Dialog
-          title="画板管理"
+          title={
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+              <span>画板管理</span>
+              <button
+                onClick={() => setOpen(false)}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: "#666",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "32px",
+                  lineHeight: 1,
+                  padding: 0,
+                  margin: 0,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "#333";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "#666";
+                }}
+                title="关闭"
+              >
+                ×
+              </button>
+            </div>
+          }
           size="wide"
           onCloseRequest={() => setOpen(false)}
         >
@@ -554,7 +589,12 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
               <Button
                 onSelect={handleResetBoard}
                 disabled={saving}
-                style={{ flex: 1, backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }}
+                style={{
+                  flex: 1,
+                  backgroundColor: "transparent",
+                  borderColor: "#ff4d4f",
+                  color: "#ff4d4f"
+                }}
               >
                 重置画板
               </Button>
