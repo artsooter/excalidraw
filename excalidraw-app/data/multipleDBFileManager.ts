@@ -58,4 +58,30 @@ export class MulitpleDBFileManager {
       return { name: v.name, created: v.created, updated: v.updated };
     });
   }
+
+  // 重命名 xmind 文件
+  static async renameXMindFile(oldName: string, newName: string) {
+    // 检查新名称是否已存在
+    const existingFile = await get<XMindFileData>(newName, xmindFilesStore);
+    if (existingFile) {
+      throw new Error("画板名称已存在");
+    }
+
+    // 获取旧文件数据
+    const oldFileData = await get<XMindFileData>(oldName, xmindFilesStore);
+    if (!oldFileData) {
+      throw new Error("原画板不存在");
+    }
+
+    // 用新名称保存数据
+    const newFileData: XMindFileData = {
+      ...oldFileData,
+      name: newName,
+      updated: Date.now(),
+    };
+    await set(newName, newFileData, xmindFilesStore);
+
+    // 删除旧数据
+    await del(oldName, xmindFilesStore);
+  }
 }

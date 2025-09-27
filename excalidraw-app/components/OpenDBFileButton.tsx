@@ -26,6 +26,11 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
   const [error, setError] = useState("");
   const [fileList, setFileList] = useState<FileListItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingFileName, setEditingFileName] = useState("");
+  const [editingValue, setEditingValue] = useState("");
+  const [showSaveCurrentDialog, setShowSaveCurrentDialog] = useState(false);
+  const [saveCurrentValue, setSaveCurrentValue] = useState("");
 
   // 获取画板列表
   const loadFileList = async () => {
@@ -45,8 +50,15 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
   }, [open]);
 
   const handleClick = async () => {
-    setOpen(true);
-    console.log(fileName)
+    const currentName = localStorage.getItem("excalidraw-name");
+
+    if (!currentName) {
+      // 当前画板没有名称，先弹出保存对话框
+      setShowSaveCurrentDialog(true);
+    } else {
+      // 有名称，直接打开画板管理
+      setOpen(true);
+    }
   };
 
   // 保存当前画板
@@ -172,6 +184,105 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
   };
 
 
+  // 重命名画板
+  const handleRenameFile = async () => {
+    if (!editingValue.trim()) {
+      setError("请输入画板名");
+      return;
+    }
+
+    if (editingValue === editingFileName) {
+      setShowEditDialog(false);
+      setEditingFileName("");
+      setEditingValue("");
+      setError("");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      await MulitpleDBFileManager.renameXMindFile(editingFileName, editingValue);
+
+      // 如果重命名的是当前画板，更新localStorage
+      if (editingFileName === currentFileName) {
+        localStorage.setItem("excalidraw-name", editingValue);
+      }
+
+      // 刷新画板列表
+      await loadFileList();
+
+      setShowEditDialog(false);
+      setEditingFileName("");
+      setEditingValue("");
+    } catch (e: any) {
+      setError(e.message || "重命名失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 保存当前画板
+  const handleSaveCurrentBoard = async () => {
+    if (!saveCurrentValue.trim()) {
+      setError("请输入画板名");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      const saved = await saveCurrentFile(saveCurrentValue);
+      if (saved) {
+        localStorage.setItem("excalidraw-name", saveCurrentValue);
+        setShowSaveCurrentDialog(false);
+        setSaveCurrentValue("");
+        setOpen(true); // 保存成功后打开画板管理
+      }
+    } catch (e: any) {
+      setError(e.message || "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 重置画板
+  const handleResetBoard = () => {
+    if (window.confirm("确定要重置画板吗？当前内容将会丢失，此操作无法撤销。")) {
+      if (excalidrawAPI) {
+        excalidrawAPI.resetScene();
+      }
+      localStorage.removeItem("excalidraw-name");
+      setShowSaveCurrentDialog(false);
+      setSaveCurrentValue("");
+      setOpen(true); // 重置后打开画板管理
+    }
+  };
+
+  // 删除画板
+  const handleDeleteFile = async (fileName: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      await MulitpleDBFileManager.deleteXMindFile(fileName);
+
+      // 如果删除的是当前画板，清空当前状态
+      if (fileName === currentFileName) {
+        if (excalidrawAPI) {
+          excalidrawAPI.resetScene();
+        }
+        localStorage.removeItem("excalidraw-name");
+      }
+
+      // 刷新画板列表
+      await loadFileList();
+    } catch (e: any) {
+      setError(e.message || "删除失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 当前画板名
   const currentFileName = typeof window !== "undefined" ? localStorage.getItem("excalidraw-name") : undefined;
 
@@ -214,11 +325,9 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
                   {fileList.map((file) => (
                     <div
                       key={file.name}
-                      onClick={() => handleOpenFile(file.name)}
                       style={{
                         padding: "8px",
                         borderBottom: "1px solid #eee",
-                        cursor: "pointer",
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
@@ -231,7 +340,10 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
                         e.currentTarget.style.backgroundColor = "transparent";
                       }}
                     >
-                      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}
+                        onClick={() => handleOpenFile(file.name)}
+                      >
                         <div style={{ fontWeight: "500" }}>{file.name}</div>
                         {file.name === currentFileName && (
                           <span style={{
@@ -247,8 +359,60 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: "12px", color: "#999" }}>
-                        点击打开
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ fontSize: "12px", color: "#999" }}>
+                          点击打开
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingFileName(file.name);
+                            setEditingValue(file.name);
+                            setShowEditDialog(true);
+                          }}
+                          style={{
+                            padding: "4px 8px",
+                            fontSize: "12px",
+                            border: "1px solid #ccc",
+                            borderRadius: "4px",
+                            background: "#fff",
+                            cursor: "pointer",
+                            color: "#666",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#f0f0f0";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "#fff";
+                          }}
+                        >
+                          编辑
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`确定要删除画板"${file.name}"吗？此操作无法撤销。`)) {
+                              handleDeleteFile(file.name);
+                            }
+                          }}
+                          style={{
+                            padding: "4px 8px",
+                            fontSize: "12px",
+                            border: "1px solid #ff4d4f",
+                            borderRadius: "4px",
+                            background: "#fff",
+                            cursor: "pointer",
+                            color: "#ff4d4f",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#fff2f0";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "#fff";
+                          }}
+                        >
+                          删除
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -301,6 +465,98 @@ const OpenDBFileButton: React.FC<OpenDBFileButtonProps> = ({ excalidrawAPI }) =>
                 style={{ flex: 1 }}
               >
                 取消
+              </Button>
+            </div>
+            {error && <div style={{ color: "red", marginTop: "8px" }}>{error}</div>}
+          </div>
+        </Dialog>
+      )}
+
+      {showEditDialog && (
+        <Dialog
+          title="编辑画板名称"
+          size="small"
+          onCloseRequest={() => {
+            setShowEditDialog(false);
+            setEditingFileName("");
+            setEditingValue("");
+            setError("");
+          }}
+        >
+          <div>
+            <div style={{ marginBottom: "8px" }}>
+              当前名称：<span style={{ fontWeight: "bold" }}>{editingFileName}</span>
+            </div>
+            <div style={{ marginBottom: "8px" }}>
+              新名称：
+            </div>
+            <input
+              value={editingValue}
+              onChange={e => setEditingValue(e.target.value)}
+              placeholder="请输入新的画板名"
+              style={{ width: "100%", marginBottom: "8px", padding: "8px", border: "1px solid #ddd", borderRadius: "4px" }}
+              autoFocus
+            />
+            <div style={{ display: "flex", gap: "8px" }}>
+              <Button
+                onSelect={handleRenameFile}
+                disabled={!editingValue.trim() || saving}
+                style={{ flex: 1 }}
+              >
+                {saving ? "保存中..." : "保存"}
+              </Button>
+              <Button
+                onSelect={() => {
+                  setShowEditDialog(false);
+                  setEditingFileName("");
+                  setEditingValue("");
+                  setError("");
+                }}
+                style={{ flex: 1 }}
+              >
+                取消
+              </Button>
+            </div>
+            {error && <div style={{ color: "red", marginTop: "8px" }}>{error}</div>}
+          </div>
+        </Dialog>
+      )}
+
+      {showSaveCurrentDialog && (
+        <Dialog
+          title="保存当前画板"
+          size="small"
+          onCloseRequest={() => {
+            setShowSaveCurrentDialog(false);
+            setSaveCurrentValue("");
+            setError("");
+          }}
+        >
+          <div>
+            <div style={{ marginBottom: "8px" }}>
+              当前画板尚未保存，请输入名称：
+            </div>
+            <input
+              value={saveCurrentValue}
+              onChange={e => setSaveCurrentValue(e.target.value)}
+              placeholder="请输入画板名"
+              style={{ width: "100%", marginBottom: "8px", padding: "8px", border: "1px solid #ddd", borderRadius: "4px" }}
+              autoFocus
+            />
+            <div style={{ display: "flex", gap: "8px" }}>
+              <Button
+                onSelect={handleSaveCurrentBoard}
+                disabled={!saveCurrentValue.trim() || saving}
+                style={{ flex: 1 }}
+              >
+                {saving ? "保存中..." : "保存"}
+              </Button>
+              <Button
+                onSelect={handleResetBoard}
+                disabled={saving}
+                style={{ flex: 1, backgroundColor: "#ff4d4f", borderColor: "#ff4d4f" }}
+              >
+                重置画板
               </Button>
             </div>
             {error && <div style={{ color: "red", marginTop: "8px" }}>{error}</div>}
